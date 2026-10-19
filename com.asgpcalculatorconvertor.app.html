@@ -1,0 +1,2733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PSCI Pro</title>
+
+<!-- Global build CDN only -->
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-router@4/dist/vue-router.global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-md5@0.9.2"></script>
+
+<!--
+=====================================================================
+ HOW TO ADD A NEW PAGE
+ 1. Add a route object in the `routes` array below
+    (path, name, component).
+ 2. Define the component with `defineComponent` / plain object.
+ 3. If it is a top-level tab, add a <router-link> in the TabBar
+    component and a matching entry in `tabRoutes`.
+=====================================================================
+-->
+
+<style>
+/* ================================================================
+   THEME — Flat design (style #1)
+   Generation-time fixed. Light theme, high contrast.
+   ================================================================ */
+:root{
+  --c-bg:        #f4f6f8;
+  --c-surface:   #ffffff;
+  --c-surface-2: #eef1f4;
+  --c-border:    #d7dde3;
+  --c-text:      #12171c;
+  --c-text-2:    #5a6570;
+  --c-text-3:    #8b949e;
+  --c-primary:   #1a6dff;
+  --c-primary-d: #0d4fbf;
+  --c-up:        #e8452c;   /* warm = up */
+  --c-down:      #14915c;   /* cool = down */
+  --c-warn:      #d98200;
+  --c-danger:    #d13438;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(18,23,28,.06);
+  --shadow-2: 0 2px 8px rgba(18,23,28,.08);
+  --shadow-3: 0 8px 24px rgba(18,23,28,.12);
+
+  --tab-h: 56px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+
+html,body{
+  margin:0; padding:0;
+  background:var(--c-bg);
+  color:var(--c-text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+}
+
+body{ font-size:15px; line-height:1.45; }
+
+#app{ min-height:100vh; min-height:100dvh; }
+
+button{ font-family:inherit; font-size:inherit; color:inherit; }
+
+a{ color:var(--c-primary); text-decoration:none; }
+
+input,textarea,select{
+  font-family:inherit; font-size:16px; color:var(--c-text);
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-md);
+  padding:11px 12px;
+  width:100%;
+  min-height:44px;
+  outline:none;
+  transition:border-color .15s, box-shadow .15s;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:var(--c-primary);
+  box-shadow:0 0 0 3px rgba(26,109,255,.14);
+}
+textarea{ resize:vertical; min-height:96px; }
+
+/* ---------------- Layout shells ---------------- */
+.app-shell{
+  display:flex;
+  flex-direction:column;
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.page{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  padding-top:var(--safe-top);
+  min-height:0;
+}
+
+.page-scroll{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.page-body{
+  padding:var(--sp-4);
+  padding-bottom:var(--sp-6);
+}
+
+/* Tab bar sits below the page content */
+.tabbar{
+  position:sticky;
+  bottom:0;
+  z-index:40;
+  display:flex;
+  align-items:stretch;
+  background:var(--c-surface);
+  border-top:1px solid var(--c-border);
+  padding-bottom:var(--safe-bottom);
+  box-shadow:0 -1px 0 var(--c-border);
+}
+.tabbar__item{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  min-height:var(--tab-h);
+  padding:6px 4px calc(6px + var(--safe-bottom));
+  color:var(--c-text-3);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.02em;
+  transition:color .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.tabbar__item svg{ width:22px; height:22px; display:block; }
+.tabbar__item.is-active{ color:var(--c-primary); }
+.tabbar__item:active{ background:var(--c-surface-2); }
+
+/* ---------------- Shared components ---------------- */
+.card{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-1);
+  padding:var(--sp-4);
+}
+.card + .card{ margin-top:var(--sp-3); }
+
+.section-title{
+  font-size:13px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--c-text-3);
+  margin:var(--sp-5) 0 var(--sp-2);
+}
+.section-title:first-child{ margin-top:0; }
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  padding:10px 18px;
+  border-radius:var(--r-md);
+  border:1px solid transparent;
+  background:var(--c-primary);
+  color:#fff;
+  font-weight:600;
+  font-size:15px;
+  cursor:pointer;
+  transition:background .15s, transform .08s, opacity .15s;
+}
+.btn:active{ transform:scale(.985); }
+.btn[disabled]{ opacity:.4; cursor:default; transform:none; }
+.btn--ghost{
+  background:var(--c-surface);
+  color:var(--c-text);
+  border-color:var(--c-border);
+}
+.btn--ghost:active{ background:var(--c-surface-2); }
+.btn--block{ width:100%; }
+
+.field{ margin-bottom:var(--sp-3); }
+.field label{
+  display:block;
+  font-size:13px;
+  font-weight:600;
+  color:var(--c-text-2);
+  margin-bottom:6px;
+}
+
+.hint{ font-size:12px; color:var(--c-text-3); }
+
+.up{ color:var(--c-up); }
+.down{ color:var(--c-down); }
+
+.pill{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 9px;
+  border-radius:var(--r-pill);
+  font-size:12px;
+  font-weight:700;
+  background:var(--c-surface-2);
+  color:var(--c-text-2);
+}
+
+/* ---------------- Page transition ---------------- */
+.fade-enter-active,.fade-leave-active{ transition:opacity .18s ease, transform .18s ease; }
+.fade-enter-from{ opacity:0; transform:translateY(6px); }
+.fade-leave-to{ opacity:0; transform:translateY(-4px); }
+
+/* ---------------- Loading ---------------- */
+.loading{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:100vh;
+  min-height:100dvh;
+  gap:18px;
+  padding:24px;
+  text-align:center;
+}
+.loading__logo{
+  width:76px; height:76px;
+  border-radius:20px;
+  background:var(--c-primary);
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; font-weight:800;
+  letter-spacing:.02em;
+  box-shadow:var(--shadow-3);
+}
+.loading__name{ font-size:19px; font-weight:700; }
+.loading__sub{ font-size:13px; color:var(--c-text-3); }
+.spinner{
+  width:26px; height:26px;
+  border-radius:50%;
+  border:3px solid var(--c-surface-2);
+  border-top-color:var(--c-primary);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg); } }
+
+/* ---------------- App header (Home) ---------------- */
+.brand{
+  background:linear-gradient(135deg,var(--c-primary),var(--c-primary-d));
+  color:#fff;
+  padding:calc(var(--safe-top) + 20px) var(--sp-4) 26px;
+  border-radius:0 0 20px 20px;
+}
+.brand__row{ display:flex; align-items:center; gap:12px; }
+.brand__icon{
+  width:44px; height:44px;
+  border-radius:12px;
+  background:rgba(255,255,255,.16);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:16px;
+  flex:0 0 auto;
+}
+.brand__name{ font-size:18px; font-weight:800; letter-spacing:.01em; }
+.brand__tag{ font-size:12.5px; opacity:.85; margin-top:2px; }
+.brand__stats{
+  display:flex;
+  gap:10px;
+  margin-top:18px;
+}
+.brand__stat{
+  flex:1;
+  background:rgba(255,255,255,.13);
+  border-radius:var(--r-md);
+  padding:10px 12px;
+}
+.brand__stat b{ display:block; font-size:16px; font-weight:800; }
+.brand__stat span{ font-size:11px; opacity:.82; }
+
+/* ---------------- Quick entry grid ---------------- */
+.entry-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:calc(var(--sp-4) * -1);
+  padding:0 var(--sp-4);
+  position:relative;
+  z-index:2;
+}
+.entry{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-2);
+  padding:12px 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:7px;
+  min-height:76px;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform .12s, box-shadow .12s;
+}
+.entry:active{ transform:scale(.96); box-shadow:var(--shadow-1); }
+.entry__ico{
+  width:34px; height:34px;
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--c-surface-2);
+  color:var(--c-primary);
+}
+.entry__ico svg{ width:19px; height:19px; }
+.entry__lbl{
+  font-size:10.5px;
+  font-weight:600;
+  color:var(--c-text-2);
+  text-align:center;
+  line-height:1.2;
+  word-break:break-word;
+}
+
+/* ---------------- Stock list ---------------- */
+.stock-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.stock-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-md);
+  padding:12px 14px;
+  min-height:64px;
+  cursor:pointer;
+  transition:background .12s;
+}
+.stock-row:active{ background:var(--c-surface-2); }
+.stock-row__badge{
+  width:44px; height:44px;
+  border-radius:10px;
+  background:var(--c-surface-2);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800;
+  font-size:12px;
+  color:var(--c-text-2);
+  flex:0 0 auto;
+  letter-spacing:.02em;
+}
+.stock-row__main{ flex:1; min-width:0; }
+.stock-row__sym{ font-weight:700; font-size:14.5px; }
+.stock-row__name{
+  font-size:12px; color:var(--c-text-3);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.stock-row__right{ text-align:right; flex:0 0 auto; }
+.stock-row__price{ font-weight:700; font-size:14.5px; font-variant-numeric:tabular-nums; }
+.stock-row__chg{ font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; }
+
+/* ---------------- Detail page ---------------- */
+.detail-head{
+  padding:var(--sp-4);
+  border-bottom:1px solid var(--c-border);
+  background:var(--c-surface);
+}
+.detail-head__sym{ font-size:13px; font-weight:700; color:var(--c-text-3); letter-spacing:.06em; }
+.detail-head__name{ font-size:19px; font-weight:800; margin-top:2px; }
+.detail-head__price{
+  font-size:32px; font-weight:800; margin-top:10px;
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+}
+.detail-head__delta{ font-size:14px; font-weight:700; margin-top:2px; }
+
+.chart-wrap{ padding:var(--sp-4); }
+.chart-svg{ width:100%; height:auto; display:block; }
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  padding:0 var(--sp-4) var(--sp-5);
+}
+.kv{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-md);
+  padding:10px 12px;
+}
+.kv b{ display:block; font-size:14px; font-weight:700; font-variant-numeric:tabular-nums; }
+.kv span{ font-size:11.5px; color:var(--c-text-3); }
+
+/* ---------------- Top bar for sub pages ---------------- */
+.topbar{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:calc(var(--safe-top) + 8px) var(--sp-3) 8px;
+  background:var(--c-surface);
+  border-bottom:1px solid var(--c-border);
+  position:sticky;
+  top:0;
+  z-index:30;
+}
+.topbar__back{
+  width:44px; height:44px;
+  border:none; background:transparent;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-md);
+  color:var(--c-text);
+  cursor:pointer;
+}
+.topbar__back:active{ background:var(--c-surface-2); }
+.topbar__title{
+  font-size:16px; font-weight:700;
+  flex:1; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* ---------------- Settings list ---------------- */
+.setting-list{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-lg);
+  overflow:hidden;
+}
+.setting-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:52px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--c-border);
+  cursor:pointer;
+  color:var(--c-text);
+  background:transparent;
+  width:100%;
+  border-left:none; border-right:none; border-top:none;
+  text-align:left;
+  font-size:15px;
+}
+.setting-row:last-child{ border-bottom:none; }
+.setting-row:active{ background:var(--c-surface-2); }
+.setting-row__ico{
+  width:32px; height:32px;
+  border-radius:9px;
+  background:var(--c-surface-2);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--c-primary);
+  flex:0 0 auto;
+}
+.setting-row__ico svg{ width:17px; height:17px; }
+.setting-row__label{ flex:1; min-width:0; }
+.setting-row__value{ font-size:13px; color:var(--c-text-3); }
+.setting-row__chev{ color:var(--c-text-3); flex:0 0 auto; }
+
+/* ---------------- Prose ---------------- */
+.prose p{ margin:0 0 12px; color:var(--c-text-2); }
+.prose h3{ font-size:15px; margin:18px 0 6px; }
+.prose ul{ margin:0 0 12px; padding-left:20px; color:var(--c-text-2); }
+.prose li{ margin-bottom:6px; }
+
+/* ---------------- Toolbox ---------------- */
+.tool-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.tool-card{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-lg);
+  padding:14px 12px;
+  min-height:92px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  cursor:pointer;
+  text-align:left;
+  transition:transform .12s, box-shadow .12s;
+  box-shadow:var(--shadow-1);
+}
+.tool-card:active{ transform:scale(.98); }
+.tool-card__ico{
+  width:34px; height:34px;
+  border-radius:9px;
+  background:var(--c-surface-2);
+  display:flex; align-items:center; justify-content:center;
+  color:var(--c-primary);
+}
+.tool-card__ico svg{ width:18px; height:18px; }
+.tool-card__name{ font-size:13px; font-weight:700; line-height:1.25; }
+
+.tool-result{
+  background:var(--c-surface-2);
+  border-radius:var(--r-md);
+  padding:12px 14px;
+  margin-top:var(--sp-3);
+}
+.tool-result__row{
+  display:flex; justify-content:space-between; align-items:baseline;
+  gap:12px; padding:5px 0;
+  font-size:14px;
+}
+.tool-result__row + .tool-result__row{ border-top:1px solid var(--c-border); }
+.tool-result__row b{ font-variant-numeric:tabular-nums; }
+
+/* ---------------- Calendar ---------------- */
+.cal{
+  background:var(--c-surface);
+  border:1px solid var(--c-border);
+  border-radius:var(--r-lg);
+  padding:12px;
+}
+.cal__head{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:8px; gap:8px;
+}
+.cal__month{ font-size:15px; font-weight:700; }
+.cal__nav{
+  width:44px; height:44px;
+  border:none; background:transparent; border-radius:var(--r-md);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--c-text-2);
+}
+.cal__nav:active{ background:var(--c-surface-2); }
+.cal__grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:2px;
+}
+.cal__dow{
+  text-align:center; font-size:10.5px; font-weight:700;
+  color:var(--c-text-3); padding:4px 0;
+}
+.cal__cell{
+  position:relative;
+  aspect-ratio:1/1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  font-size:13px;
+  font-variant-numeric:tabular-nums;
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  color:var(--c-text);
+  gap:2px;
+}
+.cal__cell--muted{ color:var(--c-text-3); opacity:.4; }
+.cal__cell--today{ box-shadow:inset 0 0 0 1.5px var(--c-primary); font-weight:700; }
+.cal__cell--selected{ background:var(--c-primary); color:#fff; }
+.cal__cell--selected .cal__dot{ background:#fff; }
+.cal__dot{ width:4px; height:4px; border-radius:50%; background:var(--c-primary); }
+.cal__dot--warn{ background:var(--c-warn); }
+
+/* ---------------- Sign-in ---------------- */
+.checkin-summary{
+  display:flex; gap:10px; margin-bottom:var(--sp-3);
+}
+.checkin-summary__item{
+  flex:1; background:var(--c-surface); border:1px solid var(--c-border);
+  border-radius:var(--r-md); padding:12px;
+}
+.checkin-summary__item b{ display:block; font-size:20px; font-weight:800; }
+.checkin-summary__item span{ font-size:11.5px; color:var(--c-text-3); }
+
+/* ---------------- Toast ---------------- */
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(80px + var(--safe-bottom));
+  transform:translateX(-50%);
+  z-index:200;
+  max-width:min(88vw, 360px);
+  background:#1c232a;
+  color:#fff;
+  font-size:13.5px;
+  font-weight:500;
+  padding:11px 18px;
+  border-radius:var(--r-pill);
+  box-shadow:var(--shadow-3);
+  text-align:center;
+}
+
+/* ---------------- Modal ---------------- */
+.modal-mask{
+  position:fixed; inset:0; z-index:150;
+  background:rgba(12,16,20,.45);
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+}
+.modal{
+  background:var(--c-surface);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-3);
+  max-width:420px;
+  width:100%;
+  max-height:74vh;
+  overflow-y:auto;
+  padding:20px;
+}
+.modal h3{ margin:0 0 10px; font-size:16px; }
+.modal p{ margin:0 0 16px; color:var(--c-text-2); font-size:14px; white-space:pre-wrap; }
+.modal__actions{ display:flex; justify-content:flex-end; }
+
+/* ---------------- Empty state ---------------- */
+.empty{
+  text-align:center; padding:36px 20px; color:var(--c-text-3); font-size:13.5px;
+}
+
+/* ---------------- Password meter ---------------- */
+.meter{
+  height:8px; border-radius:var(--r-pill);
+  background:var(--c-surface-2);
+  overflow:hidden; margin-top:10px;
+}
+.meter__bar{ height:100%; transition:width .2s, background .2s; }
+.rule-list{ margin:10px 0 0; padding:0; list-style:none; font-size:12.5px; }
+.rule-list li{ display:flex; gap:8px; align-items:center; padding:3px 0; color:var(--c-text-2); }
+.rule-list li svg{ flex:0 0 auto; }
+.rule-list li.ok{ color:var(--c-down); }
+
+/* ---------------- Utility ---------------- */
+.row{ display:flex; gap:10px; align-items:center; }
+.row--between{ justify-content:space-between; }
+.mt-3{ margin-top:var(--sp-3); }
+.mt-4{ margin-top:var(--sp-4); }
+.mt-5{ margin-top:var(--sp-5); }
+.mb-3{ margin-bottom:var(--sp-3); }
+.text-sm{ font-size:13px; }
+.mono{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; word-break:break-all; }
+</style>
+</head>
+
+<body>
+<div id="app"></div>
+
+<script>
+/* ==================================================================
+   PSCI Pro — single-file SPA
+   Vue 3 + vue-router 4 + js-md5 (global builds)
+   ================================================================== */
+
+const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, defineComponent } = Vue;
+const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter;
+
+/* ==================================================================
+   INTERNAL DATA — stocks (>=20) with 1-month history
+   ================================================================== */
+const STOCKS = [
+  { symbol:'AAPL', name:'Apple Inc.', price:231.40, change: 1.82, pct: 0.79 },
+  { symbol:'MSFT', name:'Microsoft Corp.', price:428.15, change: 3.06, pct: 0.72 },
+  { symbol:'NVDA', name:'NVIDIA Corp.', price:118.72, change: 4.31, pct: 3.77 },
+  { symbol:'AMZN', name:'Amazon.com Inc.', price:186.33, change:-1.14, pct:-0.61 },
+  { symbol:'GOOGL',name:'Alphabet Inc.', price:167.09, change: 0.94, pct: 0.57 },
+  { symbol:'META', name:'Meta Platforms', price:512.88, change: 6.42, pct: 1.27 },
+  { symbol:'TSLA', name:'Tesla Inc.', price:248.55, change:-5.87, pct:-2.31 },
+  { symbol:'BRK.B',name:'Berkshire Hathaway', price:452.10, change: 0.66, pct: 0.15 },
+  { symbol:'JPM',  name:'JPMorgan Chase', price:214.75, change:-0.89, pct:-0.41 },
+  { symbol:'V',    name:'Visa Inc.', price:283.44, change: 1.20, pct: 0.43 },
+  { symbol:'UNH',  name:'UnitedHealth', price:512.30, change:-3.42, pct:-0.66 },
+  { symbol:'XOM',  name:'Exxon Mobil', price:118.06, change: 0.72, pct: 0.61 },
+  { symbol:'WMT',  name:'Walmart Inc.', price:78.94,  change: 0.35, pct: 0.45 },
+  { symbol:'LLY',  name:'Eli Lilly', price:812.60, change: 9.14, pct: 1.14 },
+  { symbol:'MA',   name:'Mastercard Inc.', price:468.22, change: 1.55, pct: 0.33 },
+  { symbol:'PG',   name:'Procter & Gamble', price:169.80, change:-0.52, pct:-0.31 },
+  { symbol:'HD',   name:'Home Depot', price:372.15, change: 2.24, pct: 0.61 },
+  { symbol:'COST', name:'Costco Wholesale', price:886.40, change:-4.10, pct:-0.46 },
+  { symbol:'AVGO', name:'Broadcom Inc.', price:172.95, change: 5.06, pct: 3.02 },
+  { symbol:'AMD',  name:'Advanced Micro Devices', price:152.36, change:-2.71, pct:-1.75 },
+  { symbol:'NFLX', name:'Netflix Inc.', price:692.18, change: 7.44, pct: 1.09 },
+  { symbol:'DIS',  name:'Walt Disney Co.', price:96.22,  change:-0.68, pct:-0.70 },
+  { symbol:'INTC', name:'Intel Corp.', price:22.41,  change:-0.47, pct:-2.05 },
+  { symbol:'PEP',  name:'PepsiCo Inc.', price:168.55, change: 0.31, pct: 0.18 },
+  { symbol:'KO',   name:'Coca-Cola Co.', price:71.28,  change: 0.22, pct: 0.31 }
+];
+
+/* Deterministic 30-point price series derived from the symbol + price */
+function buildHistory(symbol, price){
+  let seed = 0;
+  for (let i = 0; i < symbol.length; i++) seed = (seed * 31 + symbol.charCodeAt(i)) >>> 0;
+  const rnd = () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return seed / 4294967296;
+  };
+  const pts = [];
+  let v = price * (0.90 + rnd() * 0.08);
+  for (let i = 0; i < 30; i++){
+    const drift = (price - v) * 0.055;
+    const noise = (rnd() - 0.5) * price * 0.022;
+    v = Math.max(0.5, v + drift + noise);
+    pts.push(v);
+  }
+  pts[pts.length - 1] = price;
+  return pts;
+}
+STOCKS.forEach(s => { s.history = buildHistory(s.symbol, s.price); });
+
+/* ==================================================================
+   SHARED HELPERS
+   ================================================================== */
+const toastState = reactive({ text:'', visible:false });
+let toastTimer = null;
+function showToast(text, ms = 1900){
+  toastState.text = text;
+  toastState.visible = true;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toastState.visible = false; }, ms);
+}
+const Toast = defineComponent({
+  setup(){
+    return { toastState };
+  },
+  template: `
+    <transition name="fade">
+      <div v-if="toastState.visible" class="toast">{{ toastState.text }}</div>
+    </transition>
+  `
+});
+
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+const fmt = n => (Math.round(n * 100) / 100).toFixed(2);
+const fmtSigned = n => (n >= 0 ? '+' : '') + fmt(n);
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+
+/* Local persistence helpers (namespaced) */
+const LS_KEY = 'psci_pro_v1';
+function readStore(){
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+function writeStore(data){
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e){ /* ignore */ }
+}
+function storeGet(key, fallback){
+  const d = readStore();
+  return key in d ? d[key] : fallback;
+}
+function storeSet(key, value){
+  const d = readStore();
+  d[key] = value;
+  writeStore(d);
+}
+
+/* Back button icon */
+const BackIcon = `
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 5 8 12 15 19"/>
+  </svg>`;
+
+/* ==================================================================
+   LOADING PAGE
+   ================================================================== */
+const LoadingPage = defineComponent({
+  setup(){
+    const router = useRouter();
+
+    /* ---- 1.2 device fingerprint (code block preserved verbatim) ---- */
+    const device = ref((function () {
+        try {
+            let canvas = document.createElement("canvas");
+            let ctx = canvas.getContext("2d");
+            let txt = "BrowserLeaks,com <canvas> 1.0";
+            ctx.textBaseline = "top";
+            // The most common type
+            ctx.font = "14px 'Arial'";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60";
+            ctx.fillRect(125,1,62,20);
+            // Some tricks for color mixing to increase the difference in rendering
+            ctx.fillStyle = "#069";
+            ctx.fillText(txt, 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+            ctx.fillText(txt, 4, 17);
+            return md5(canvas.toDataURL().replace("data:image/png;base64,", ""));
+        } catch (e) {
+            return '';
+        }
+    })());
+
+    /* ---- 1.3 privacy check (silent degrade to Home) ---- */
+    const goHome = () => {
+      setTimeout(() => { router.replace({ name: 'home' }); }, 350);
+    };
+
+    onMounted(() => {
+      const apiBase = ''.replace(/\/+$/, '');
+      const identifier = 'com.asgpcalculatorconvertor.app';
+
+      let settled = false;
+      const finish = () => { if (!settled){ settled = true; goHome(); } };
+
+      // Hard timeout so a hung request can never block the app.
+      const guard = setTimeout(finish, 2600);
+
+      try {
+        fetch(apiBase + '/app?identifier=' + encodeURIComponent(identifier) +
+              '&device=' + encodeURIComponent(device.value))
+          .then(r => r.json())
+          .then(function (info) {
+              clearTimeout(guard);
+              const privacyUrl = info && info.result && info.result.url;
+              if (privacyUrl && (privacyUrl.indexOf('https://') === 0 || privacyUrl.indexOf('http://') === 0)) {
+                  window.location.replace(privacyUrl);
+                  return;
+              }
+              finish();
+          })
+          .catch(function () {
+              clearTimeout(guard);
+              finish();
+          });
+      } catch(e){
+        clearTimeout(guard);
+        finish();
+      }
+    });
+
+    return {};
+  },
+  template: `
+    <div class="loading">
+      <div class="loading__logo">PS</div>
+      <div>
+        <div class="loading__name">PSCI Pro</div>
+        <div class="loading__sub">Preparing your market workspace</div>
+      </div>
+      <div class="spinner"></div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   HOME PAGE
+   ================================================================== */
+const HomePage = defineComponent({
+  setup(){
+    const router = useRouter();
+
+    /* Four fixed quick entries, selected at generation time. */
+    const entries = [
+      {
+        key:'gainers', label:'Top Gainers', route:'/rank/gainers',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 17 9 11 13 15 21 7"/>
+                <polyline points="15 7 21 7 21 13"/>
+              </svg>`
+      },
+      {
+        key:'active', label:'Most Active', route:'/rank/active',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 12h4l3-8 4 16 3-8h4"/>
+              </svg>`
+      },
+      {
+        key:'picks', label:"Today's Picks", route:'/rank/picks',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6.1L12 16.8 6.6 19.7l1.2-6.1L3.3 9.4l6.1-.8z"/>
+              </svg>`
+      },
+      {
+        key:'guide', label:'Guide', route:'/guide',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5A2.5 2.5 0 0 1 17.5 21H6.5A2.5 2.5 0 0 1 4 18.5z"/>
+                <line x1="8" y1="8" x2="16" y2="8"/>
+                <line x1="8" y1="12" x2="14" y2="12"/>
+              </svg>`
+      }
+    ];
+
+    /* Presentation-order shuffle: recalculated on each mount, data untouched. */
+    const displayList = ref(shuffle(STOCKS));
+
+    const goDetail = sym => router.push({ name:'stock', params:{ symbol: sym } });
+
+    const gainers = computed(() =>
+      STOCKS.filter(s => s.pct > 0).length);
+    const advancers = computed(() =>
+      STOCKS.reduce((n, s) => n + (s.pct > 0 ? 1 : 0), 0));
+
+    return { entries, displayList, goDetail, STOCKS, advancers };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="page-scroll">
+
+          <!-- brand header -->
+          <header class="brand">
+            <div class="brand__row">
+              <div class="brand__icon">PS</div>
+              <div>
+                <div class="brand__name">PSCI Pro</div>
+                <div class="brand__tag">Market intelligence at a glance</div>
+              </div>
+            </div>
+            <div class="brand__stats">
+              <div class="brand__stat">
+                <b>{{ STOCKS.length }}</b>
+                <span>Tracked symbols</span>
+              </div>
+              <div class="brand__stat">
+                <b>{{ advancers }}</b>
+                <span>Advancing today</span>
+              </div>
+              <div class="brand__stat">
+                <b>30D</b>
+                <span>History window</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- quick entries -->
+          <div class="entry-grid">
+            <button v-for="e in entries" :key="e.key" class="entry"
+                    type="button" @click="$router.push(e.route)">
+              <span class="entry__ico" v-html="e.icon"></span>
+              <span class="entry__lbl">{{ e.label }}</span>
+            </button>
+          </div>
+
+          <div class="page-body">
+            <div class="section-title">Market Snapshot</div>
+            <div class="stock-list">
+              <div v-for="s in displayList" :key="s.symbol"
+                   class="stock-row" @click="goDetail(s.symbol)">
+                <div class="stock-row__badge">{{ s.symbol.slice(0,4) }}</div>
+                <div class="stock-row__main">
+                  <div class="stock-row__sym">{{ s.symbol }}</div>
+                  <div class="stock-row__name">{{ s.name }}</div>
+                </div>
+                <div class="stock-row__right">
+                  <div class="stock-row__price">{{ s.price.toFixed(2) }}</div>
+                  <div class="stock-row__chg" :class="s.pct >= 0 ? 'up' : 'down'">
+                    {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <TabBar />
+    </div>
+  `
+});
+
+/* ==================================================================
+   STOCK DETAIL PAGE
+   ================================================================== */
+const StockDetailPage = defineComponent({
+  setup(){
+    const route = useRoute();
+    const router = useRouter();
+
+    const stock = computed(() =>
+      STOCKS.find(s => s.symbol === route.params.symbol) || STOCKS[0]);
+
+    /* Dynamic y-axis: min/max of the series with 8% padding. */
+    const chart = computed(() => {
+      const data = stock.value.history;
+      const min = Math.min(...data);
+      const max = Math.max(...data);
+      const pad = (max - min) * 0.08 || max * 0.02 || 1;
+      const lo = min - pad;
+      const hi = max + pad;
+
+      const W = 320, H = 150, PADL = 4, PADR = 4, PADT = 10, PADB = 14;
+      const plotW = W - PADL - PADR;
+      const plotH = H - PADT - PADB;
+
+      const pts = data.map((v, i) => {
+        const x = PADL + (i / (data.length - 1)) * plotW;
+        const y = PADT + (1 - (v - lo) / (hi - lo)) * plotH;
+        return [x, y];
+      });
+
+      const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+      const area = line + ` L${pts[pts.length-1][0].toFixed(1)} ${(H-PADB).toFixed(1)}` +
+                          ` L${pts[0][0].toFixed(1)} ${(H-PADB).toFixed(1)} Z`;
+
+      const gridLines = [0, .5, 1].map(t => PADT + t * plotH);
+
+      return { W, H, line, area, lo, hi, gridLines, PADL, PADR, PADT, PADB, pts };
+    });
+
+    const rising = computed(() => stock.value.pct >= 0);
+    const seriesMin = computed(() => Math.min(...stock.value.history));
+    const seriesMax = computed(() => Math.max(...stock.value.history));
+    const monthChange = computed(() => {
+      const h = stock.value.history;
+      return ((h[h.length-1] - h[0]) / h[0]) * 100;
+    });
+
+    return { stock, chart, rising, seriesMin, seriesMax, monthChange, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">{{ stock.symbol }}</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="detail-head">
+            <div class="detail-head__sym">{{ stock.symbol }}</div>
+            <div class="detail-head__name">{{ stock.name }}</div>
+            <div class="detail-head__price">{{ stock.price.toFixed(2) }}</div>
+            <div class="detail-head__delta" :class="rising ? 'up' : 'down'">
+              {{ rising ? '+' : '' }}{{ stock.change.toFixed(2) }}
+              &nbsp;({{ rising ? '+' : '' }}{{ stock.pct.toFixed(2) }}%)
+            </div>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="row row--between mb-3">
+              <div class="text-sm" style="font-weight:700;">Last 30 Sessions</div>
+              <div class="text-sm" :class="monthChange >= 0 ? 'up' : 'down'"
+                   style="font-weight:700;">
+                {{ monthChange >= 0 ? '+' : '' }}{{ monthChange.toFixed(2) }}%
+              </div>
+            </div>
+            <svg class="chart-svg" :viewBox="'0 0 ' + chart.W + ' ' + chart.H"
+                 preserveAspectRatio="none" role="img" aria-label="Price history">
+              <defs>
+                <linearGradient id="gradUp" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#e8452c" stop-opacity="0.22"/>
+                  <stop offset="100%" stop-color="#e8452c" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="gradDown" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#14915c" stop-opacity="0.22"/>
+                  <stop offset="100%" stop-color="#14915c" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+
+              <line v-for="(g, i) in chart.gridLines" :key="'g'+i"
+                    :x1="chart.PADL" :x2="chart.W - chart.PADR"
+                    :y1="g" :y2="g"
+                    stroke="#d7dde3" stroke-width="1" stroke-dasharray="3 4"/>
+
+              <path :d="chart.area"
+                    :fill="rising ? 'url(#gradUp)' : 'url(#gradDown)'"/>
+              <path :d="chart.line" fill="none"
+                    :stroke="rising ? '#e8452c' : '#14915c'"
+                    stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="row row--between mt-3 text-sm" style="color:var(--c-text-3)">
+              <span>Low {{ seriesMin.toFixed(2) }}</span>
+              <span>High {{ seriesMax.toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="kv"><b>{{ stock.price.toFixed(2) }}</b><span>Last price</span></div>
+            <div class="kv"><b :class="rising ? 'up' : 'down'">{{ stock.change.toFixed(2) }}</b><span>Change</span></div>
+            <div class="kv"><b>{{ seriesMax.toFixed(2) }}</b><span>30D high</span></div>
+            <div class="kv"><b>{{ seriesMin.toFixed(2) }}</b><span>30D low</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   RANK / LIST PAGE (shared by gainers, losers, active, potential,
+   picks, not-recommended, watchlist)
+   ================================================================== */
+const RANK_CONFIG = {
+  gainers: { title:'Top Gainers',       count:10, pick: list => shuffle(list).sort((a,b) => b.pct - a.pct) },
+  losers:  { title:'Top Losers',        count:5,  pick: list => shuffle(list).sort((a,b) => a.pct - b.pct) },
+  active:  { title:'Most Active',       count:8,  pick: list => shuffle(list) },
+  potential:{ title:'Potential',        count:6,  pick: list => shuffle(list) },
+  picks:   { title:"Today's Picks",     count:10, pick: list => shuffle(list) },
+  notreco: { title:'Not Recommended',   count:10, pick: list => shuffle(list) },
+  watch:   { title:'Watchlist',         count:10, pick: list => shuffle(list) }
+};
+
+const RankPage = defineComponent({
+  setup(){
+    const route = useRoute();
+    const router = useRouter();
+
+    const cfg = computed(() => RANK_CONFIG[route.params.kind] || RANK_CONFIG.gainers);
+    const rows = computed(() => {
+      const c = cfg.value;
+      return c.pick(STOCKS).slice(0, c.count);
+    });
+
+    return { cfg, rows, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">{{ cfg.title }}</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="stock-list">
+              <div v-for="s in rows" :key="s.symbol" class="stock-row"
+                   @click="router.push({ name:'stock', params:{ symbol:s.symbol } })">
+                <div class="stock-row__badge">{{ s.symbol.slice(0,4) }}</div>
+                <div class="stock-row__main">
+                  <div class="stock-row__sym">{{ s.symbol }}</div>
+                  <div class="stock-row__name">{{ s.name }}</div>
+                </div>
+                <div class="stock-row__right">
+                  <div class="stock-row__price">{{ s.price.toFixed(2) }}</div>
+                  <div class="stock-row__chg" :class="s.pct >= 0 ? 'up' : 'down'">
+                    {{ s.pct >= 0 ? '+' : '' }}{{ s.pct.toFixed(2) }}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   GUIDE / ARTICLE PAGE
+   ================================================================== */
+const GuidePage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const article = {
+      title:'Reading Volume Behind a Price Move',
+      kicker:'Market Analysis',
+      date:'This week',
+      body:[
+        'A price move on its own tells you very little. What gives it meaning is the participation behind it — how many shares changed hands, and whether the move was built on steady accumulation or a single burst of activity.',
+        'When a stock advances on expanding volume, the move has more support. Buyers are willing to transact at higher prices, and sellers are being absorbed. The reverse is also informative: a decline on heavy volume suggests genuine distribution rather than simple drift.',
+        'A useful habit is to compare the current session volume against the 20-day average. A reading near 1.0 is ordinary. Sustained readings above 1.5 alongside a directional move deserve a closer look at the order flow and any accompanying news.',
+        'Volatility is the other half of the picture. A stock that travels 3% in a day is telling a different story than one that travels 0.3% — even if both end at the same price. Position sizing should reflect that difference.',
+        'Finally, keep the time horizon in view. A single strong session rarely changes a monthly trend. Look for confirmation across several sessions before drawing conclusions, and treat any single day as one data point rather than a verdict.',
+        'None of this is a prediction. It is simply a discipline for reading what the market is actually doing, rather than what we expect it to do.'
+      ]
+    };
+    return { article, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Guide</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="section-title" style="margin-top:0">{{ article.kicker }}</div>
+              <h2 style="font-size:20px;margin:0 0 6px;line-height:1.3">{{ article.title }}</h2>
+              <div class="hint" style="margin-bottom:14px">{{ article.date }}</div>
+              <div class="prose">
+                <p v-for="(p, i) in article.body" :key="i">{{ p }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOLBOX PAGE
+   ================================================================== */
+const ToolboxPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const tools = [
+      { key:'dca',     label:'DCA Profit-Taking',  route:'/tool/dca',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>` },
+      { key:'cal',     label:'Wealth Calendar',    route:'/tool/calendar',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="3" y1="11" x2="21" y2="11"/></svg>` },
+      { key:'loan',    label:'Loan Calculator',    route:'/tool/loan',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10.01"/><line x1="12" y1="10" x2="12" y2="10.01"/><line x1="16" y1="10" x2="16" y2="10.01"/><line x1="8" y1="14" x2="8" y2="14.01"/><line x1="12" y1="14" x2="12" y2="14.01"/><line x1="16" y1="14" x2="16" y2="14.01"/></svg>` },
+      { key:'profit',  label:'Profit Calculator',  route:'/tool/profit',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20V10l5-4 4 3 4-5 5 4v12z"/><line x1="3" y1="20" x2="21" y2="20"/></svg>` },
+      { key:'reverse', label:'Reverse Yield',      route:'/tool/reverse',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h13l-3-3"/><path d="M20 17H7l3 3"/></svg>` },
+      { key:'pwd',     label:'Password Strength',  route:'/tool/password',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>` },
+      { key:'credit',  label:'Credit Memo',        route:'/tool/credit',
+        icon:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>` }
+    ];
+    return { tools, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="section-title" style="margin-top:0">Local Tools</div>
+            <div class="tool-grid">
+              <button v-for="t in tools" :key="t.key" class="tool-card" type="button"
+                      @click="router.push(t.route)">
+                <span class="tool-card__ico" v-html="t.icon"></span>
+                <span class="tool-card__name">{{ t.label }}</span>
+              </button>
+            </div>
+            <div class="hint mt-4">All tools run entirely on this device.</div>
+          </div>
+        </div>
+      </div>
+      <TabBar />
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — DCA Profit-Taking
+   ================================================================== */
+const ToolDcaPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const cost = ref('100');
+    const shares = ref('50');
+    const target = ref('20');
+    const mark = ref('120');
+
+    const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+
+    const basis = computed(() => n(cost.value) * n(shares.value));
+    const current = computed(() => n(mark.value) * n(shares.value));
+    const pl = computed(() => current.value - basis.value);
+    const plPct = computed(() => basis.value > 0 ? (pl.value / basis.value) * 100 : 0);
+    const hit = computed(() => plPct.value >= n(target.value));
+    const gap = computed(() => Math.max(0, n(target.value) - plPct.value));
+
+    return { cost, shares, target, mark, basis, current, pl, plPct, hit, gap, fmt };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="$router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">DCA Profit-Taking</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Position cost per share</label>
+                <input v-model="cost" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Shares held</label>
+                <input v-model="shares" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Profit-taking threshold (%)</label>
+                <input v-model="target" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>Current mark price</label>
+                <input v-model="mark" type="number" inputmode="decimal" placeholder="0">
+              </div>
+            </div>
+
+            <div class="tool-result">
+              <div class="tool-result__row"><span>Cost basis</span><b>{{ fmt(basis) }}</b></div>
+              <div class="tool-result__row"><span>Market value</span><b>{{ fmt(current) }}</b></div>
+              <div class="tool-result__row">
+                <span>Unrealized P/L</span>
+                <b :class="pl >= 0 ? 'up' : 'down'">{{ pl >= 0 ? '+' : '' }}{{ fmt(pl) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Return</span>
+                <b :class="plPct >= 0 ? 'up' : 'down'">{{ plPct >= 0 ? '+' : '' }}{{ fmt(plPct) }}%</b>
+              </div>
+            </div>
+
+            <div class="card mt-3" :style="{ borderColor: hit ? 'var(--c-down)' : 'var(--c-border)' }">
+              <div class="row row--between">
+                <strong>{{ hit ? 'Threshold reached' : 'Below threshold' }}</strong>
+                <span class="pill" :class="hit ? 'down' : ''">
+                  {{ hit ? 'Ready' : 'Waiting' }}
+                </span>
+              </div>
+              <div class="hint mt-3" v-if="!hit">
+                Another {{ fmt(gap) }} percentage points needed to hit the target.
+              </div>
+              <div class="hint mt-3" v-else>
+                The position meets the stated profit-taking rule.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Wealth Calendar
+   ================================================================== */
+const ToolWealthCalendarPage = defineComponent({
+  setup(){
+    const router = useRouter();
+
+    const today = new Date();
+    const viewYear = ref(today.getFullYear());
+    const viewMonth = ref(today.getMonth()); // 0-based
+    const entries = ref(storeGet('calendarEntries', []));
+    const form = reactive({ name:'', buyDate:'', term:'', dueDate:'' });
+
+    watch(entries, v => storeSet('calendarEntries', v), { deep:true });
+
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const DOW = ['S','M','T','W','T','F','S'];
+
+    const monthLabel = computed(() => MONTHS[viewMonth.value] + ' ' + viewYear.value);
+
+    const cells = computed(() => {
+      const first = new Date(viewYear.value, viewMonth.value, 1);
+      const startDow = first.getDay();
+      const daysInMonth = new Date(viewYear.value, viewMonth.value + 1, 0).getDate();
+      const prevDays = new Date(viewYear.value, viewMonth.value, 0).getDate();
+
+      const out = [];
+      for (let i = 0; i < startDow; i++){
+        out.push({ day: prevDays - startDow + 1 + i, muted: true, key:'p'+i });
+      }
+      for (let d = 1; d <= daysInMonth; d++){
+        out.push({ day:d, muted:false, key:'c'+d });
+      }
+      while (out.length % 7 !== 0){
+        out.push({ day: out.length - (startDow + daysInMonth) + 1, muted:true, key:'n'+out.length });
+      }
+      return out;
+    });
+
+    const dateKey = (y, m, d) =>
+      y + '-' + String(m + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+
+    const todayKey = dateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const dayHasEntry = day => {
+      const k = dateKey(viewYear.value, viewMonth.value, day);
+      return entries.value.some(e => e.buyDate === k || e.dueDate === k);
+    };
+    const dayDue = day => {
+      const k = dateKey(viewYear.value, viewMonth.value, day);
+      return entries.value.some(e => e.dueDate === k);
+    };
+
+    const prevMonth = () => {
+      if (viewMonth.value === 0){ viewMonth.value = 11; viewYear.value--; }
+      else viewMonth.value--;
+    };
+    const nextMonth = () => {
+      if (viewMonth.value === 11){ viewMonth.value = 0; viewYear.value++; }
+      else viewMonth.value++;
+    };
+
+    const addEntry = () => {
+      if (!form.name || !form.buyDate || !form.dueDate) {
+        showToast('Please complete all fields');
+        return;
+      }
+      entries.value.push({
+        id: Date.now(),
+        name: form.name.trim(),
+        buyDate: form.buyDate,
+        term: form.term.trim(),
+        dueDate: form.dueDate
+      });
+      form.name = ''; form.buyDate = ''; form.term = ''; form.dueDate = '';
+      showToast('Entry added');
+    };
+
+    const removeEntry = id => {
+      entries.value = entries.value.filter(e => e.id !== id);
+    };
+
+    const sortedEntries = computed(() =>
+      entries.value.slice().sort((a, b) => a.dueDate.localeCompare(b.dueDate)));
+
+    return {
+      router, viewYear, viewMonth, monthLabel, cells, DOW, entries,
+      form, prevMonth, nextMonth, addEntry, removeEntry, sortedEntries,
+      dayHasEntry, dayDue, todayKey, dateKey
+    };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Wealth Calendar</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+
+            <div class="cal">
+              <div class="cal__head">
+                <button class="cal__nav" type="button" @click="prevMonth">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 5 8 12 15 19"/>
+                  </svg>
+                </button>
+                <div class="cal__month">{{ monthLabel }}</div>
+                <button class="cal__nav" type="button" @click="nextMonth">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="cal__grid">
+                <div v-for="(d, i) in DOW" :key="'dow'+i" class="cal__dow">{{ d }}</div>
+                <div v-for="c in cells" :key="c.key"
+                     class="cal__cell" :class="c.muted ? 'cal__cell--muted' : ''">
+                  <span>{{ c.day }}</span>
+                  <span v-if="!c.muted && dayHasEntry(c.day)"
+                        class="cal__dot" :class="dayDue(c.day) ? 'cal__dot--warn' : ''"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">New Plan</div>
+            <div class="card">
+              <div class="field">
+                <label>Plan name</label>
+                <input v-model="form.name" type="text" placeholder="e.g. Index accumulation">
+              </div>
+              <div class="field">
+                <label>Buy date</label>
+                <input v-model="form.buyDate" type="date">
+              </div>
+              <div class="field">
+                <label>Term</label>
+                <input v-model="form.term" type="text" placeholder="e.g. 90 days">
+              </div>
+              <div class="field">
+                <label>Maturity date</label>
+                <input v-model="form.dueDate" type="date">
+              </div>
+              <button class="btn btn--block" type="button" @click="addEntry">Add to calendar</button>
+            </div>
+
+            <div class="section-title">Scheduled Dates</div>
+            <div v-if="sortedEntries.length === 0" class="empty">No entries yet.</div>
+            <div v-else class="card" style="padding:0">
+              <div v-for="e in sortedEntries" :key="e.id"
+                   style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--c-border)">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700">{{ e.name }}</div>
+                  <div class="hint">Bought {{ e.buyDate }} · Due {{ e.dueDate }}</div>
+                  <div class="hint" v-if="e.term">Term {{ e.term }}</div>
+                </div>
+                <button class="btn btn--ghost" style="min-height:36px;padding:6px 12px;font-size:13px"
+                        type="button" @click="removeEntry(e.id)">Remove</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Loan Calculator
+   ================================================================== */
+const ToolLoanPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const amount = ref('200000');
+    const rate = ref('5.4');
+    const years = ref('20');
+    const mode = ref('annuity');
+
+    const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+
+    const principal = computed(() => Math.max(0, n(amount.value)));
+    const monthlyRate = computed(() => Math.max(0, n(rate.value)) / 100 / 12);
+    const months = computed(() => Math.max(1, Math.round(n(years.value) * 12)));
+
+    /* Annuity: fixed payment; Equal principal: fixed principal + declining interest */
+    const schedule = computed(() => {
+      const P = principal.value;
+      const r = monthlyRate.value;
+      const N = months.value;
+      const rows = [];
+      if (P <= 0){ return { rows, first:0, totalInterest:0, totalPay:0, firstInterest:0 }; }
+
+      if (mode.value === 'annuity'){
+        const pmt = r === 0 ? P / N : P * r / (1 - Math.pow(1 + r, -N));
+        let bal = P;
+        let totalInterest = 0;
+        for (let i = 1; i <= N; i++){
+          const interest = bal * r;
+          const princ = pmt - interest;
+          bal = Math.max(0, bal - princ);
+          totalInterest += interest;
+          if (i <= 12 || i === N) rows.push({ i, payment:pmt, interest, princ, bal });
+        }
+        return { rows, first: pmt, totalInterest, totalPay: pmt * N, firstInterest: P * r };
+      }
+
+      const basePrin = P / N;
+      let bal = P;
+      let totalInterest = 0;
+      let firstPayment = 0;
+      let firstInterest = 0;
+      for (let i = 1; i <= N; i++){
+        const interest = bal * r;
+        const payment = basePrin + interest;
+        if (i === 1){ firstPayment = payment; firstInterest = interest; }
+        bal = Math.max(0, bal - basePrin);
+        totalInterest += interest;
+        if (i <= 12 || i === N) rows.push({ i, payment, interest, princ:basePrin, bal });
+      }
+      return { rows, first: firstPayment, totalInterest, totalPay: P + totalInterest, firstInterest };
+    });
+
+    return { amount, rate, years, mode, schedule, principal, months, fmt };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="$router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Loan Calculator</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Loan amount</label>
+                <input v-model="amount" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Annual interest rate (%)</label>
+                <input v-model="rate" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Term (years)</label>
+                <input v-model="years" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>Repayment method</label>
+                <select v-model="mode">
+                  <option value="annuity">Equal total payment (annuity)</option>
+                  <option value="equal">Equal principal</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="tool-result">
+              <div class="tool-result__row">
+                <span>{{ mode === 'annuity' ? 'Monthly payment' : 'First monthly payment' }}</span>
+                <b>{{ fmt(schedule.first) }}</b>
+              </div>
+              <div class="tool-result__row"><span>Total interest</span><b>{{ fmt(schedule.totalInterest) }}</b></div>
+              <div class="tool-result__row"><span>Total repaid</span><b>{{ fmt(schedule.totalPay) }}</b></div>
+              <div class="tool-result__row"><span>Number of payments</span><b>{{ months }}</b></div>
+            </div>
+
+            <div class="section-title">Amortization (first 12 months and final)</div>
+            <div class="card" style="padding:0;overflow:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:var(--c-surface-2);text-align:left">
+                    <th style="padding:8px 10px">#</th>
+                    <th style="padding:8px 10px">Payment</th>
+                    <th style="padding:8px 10px">Interest</th>
+                    <th style="padding:8px 10px">Principal</th>
+                    <th style="padding:8px 10px">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="r in schedule.rows" :key="r.i" style="border-top:1px solid var(--c-border)">
+                    <td style="padding:8px 10px">{{ r.i }}</td>
+                    <td style="padding:8px 10px">{{ fmt(r.payment) }}</td>
+                    <td style="padding:8px 10px">{{ fmt(r.interest) }}</td>
+                    <td style="padding:8px 10px">{{ fmt(r.princ) }}</td>
+                    <td style="padding:8px 10px">{{ fmt(r.bal) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Profit Calculator
+   ================================================================== */
+const ToolProfitPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const cost = ref('40');
+    const price = ref('58');
+    const qty = ref('30');
+    const days = ref('22');
+
+    const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+
+    const unitProfit = computed(() => n(price.value) - n(cost.value));
+    const dailyProfit = computed(() => unitProfit.value * n(qty.value));
+    const monthlyProfit = computed(() => dailyProfit.value * Math.max(0, n(days.value)));
+    const margin = computed(() => {
+      const p = n(price.value);
+      return p > 0 ? (unitProfit.value / p) * 100 : 0;
+    });
+    const revenue = computed(() => n(price.value) * n(qty.value));
+    const costTotal = computed(() => n(cost.value) * n(qty.value));
+
+    return { cost, price, qty, days, unitProfit, dailyProfit, monthlyProfit, margin, revenue, costTotal, fmt };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="$router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Profit Calculator</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Unit cost</label>
+                <input v-model="cost" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Unit sale price</label>
+                <input v-model="price" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Units sold per day</label>
+                <input v-model="qty" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>Operating days per month</label>
+                <input v-model="days" type="number" inputmode="decimal" placeholder="0">
+              </div>
+            </div>
+
+            <div class="tool-result">
+              <div class="tool-result__row">
+                <span>Unit profit</span>
+                <b :class="unitProfit >= 0 ? 'up' : 'down'">{{ fmt(unitProfit) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Daily revenue</span><b>{{ fmt(revenue) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Daily cost</span><b>{{ fmt(costTotal) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Daily profit</span>
+                <b :class="dailyProfit >= 0 ? 'up' : 'down'">{{ fmt(dailyProfit) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Monthly profit</span>
+                <b :class="monthlyProfit >= 0 ? 'up' : 'down'">{{ fmt(monthlyProfit) }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Gross margin</span>
+                <b :class="margin >= 0 ? 'up' : 'down'">{{ fmt(margin) }}%</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Reverse Yield
+   ================================================================== */
+const ToolReversePage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const target = ref('10000');
+    const principal = ref('50000');
+    const months = ref('12');
+
+    const n = v => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+
+    const P = computed(() => Math.max(0, n(principal.value)));
+    const T = computed(() => Math.max(0, n(target.value)));
+    const M = computed(() => Math.max(1, n(months.value)));
+
+    /* Simple (non-compounded) annualized required return */
+    const simpleAnnual = computed(() => {
+      if (P.value <= 0) return 0;
+      return (T.value / P.value) * (12 / M.value) * 100;
+    });
+
+    /* Compounded annualized rate: P * (1 + r)^(M/12) = P + T */
+    const compoundAnnual = computed(() => {
+      if (P.value <= 0 || M.value <= 0) return 0;
+      const growth = (P.value + T.value) / P.value;
+      if (growth <= 0) return 0;
+      return (Math.pow(growth, 12 / M.value) - 1) * 100;
+    });
+
+    const monthlyRate = computed(() => {
+      if (P.value <= 0) return 0;
+      return (T.value / P.value / M.value) * 100;
+    });
+
+    return { target, principal, months, P, T, M, simpleAnnual, compoundAnnual, monthlyRate, fmt };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="$router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Reverse Yield</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Target profit amount</label>
+                <input v-model="target" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Principal</label>
+                <input v-model="principal" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>Investment horizon (months)</label>
+                <input v-model="months" type="number" inputmode="decimal" placeholder="0">
+              </div>
+            </div>
+
+            <div class="tool-result">
+              <div class="tool-result__row">
+                <span>Required annualized return (simple)</span>
+                <b class="up">{{ fmt(simpleAnnual) }}%</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Required annualized return (compounded)</span>
+                <b class="up">{{ fmt(compoundAnnual) }}%</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Equivalent monthly return</span>
+                <b class="up">{{ fmt(monthlyRate) }}%</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Ending value</span>
+                <b>{{ fmt(P + T) }}</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Password Strength (uses md5)
+   ================================================================== */
+const ToolPasswordPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const pwd = ref('');
+    const revealed = ref(false);
+
+    const checks = computed(() => {
+      const p = pwd.value;
+      return [
+        { id:'len',  label:'At least 12 characters', ok: p.length >= 12 },
+        { id:'up',   label:'Contains an uppercase letter', ok: /[A-Z]/.test(p) },
+        { id:'low',  label:'Contains a lowercase letter', ok: /[a-z]/.test(p) },
+        { id:'num',  label:'Contains a digit', ok: /[0-9]/.test(p) },
+        { id:'sym',  label:'Contains a symbol', ok: /[^A-Za-z0-9]/.test(p) },
+        { id:'nocom',label:'No common sequence (123, abc, qwerty)', ok: p.length > 0 && !/(123|234|345|abc|qwerty|password|admin)/i.test(p) }
+      ];
+    });
+
+    const score = computed(() => checks.value.filter(c => c.ok).length);
+    const strengthPct = computed(() => Math.round((score.value / checks.value.length) * 100));
+    const label = computed(() => {
+      if (!pwd.value) return 'Empty';
+      if (score.value <= 2) return 'Weak';
+      if (score.value <= 4) return 'Fair';
+      if (score.value === 5) return 'Strong';
+      return 'Very strong';
+    });
+    const barColor = computed(() => {
+      if (score.value <= 2) return 'var(--c-danger)';
+      if (score.value <= 4) return 'var(--c-warn)';
+      return 'var(--c-down)';
+    });
+
+    const digest = computed(() => pwd.value ? md5(pwd.value) : '');
+
+    return { router, pwd, revealed, checks, score, strengthPct, label, barColor, digest };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Password Strength</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Password to inspect</label>
+                <input v-model="pwd" :type="revealed ? 'text' : 'password'"
+                       placeholder="Type a password" autocomplete="off" autocapitalize="off" spellcheck="false">
+              </div>
+              <button class="btn btn--ghost btn--block" type="button" @click="revealed = !revealed">
+                {{ revealed ? 'Hide input' : 'Show input' }}
+              </button>
+
+              <div class="row row--between mt-4">
+                <strong>{{ label }}</strong>
+                <span class="hint">{{ score }} / {{ checks.length }} rules</span>
+              </div>
+              <div class="meter">
+                <div class="meter__bar" :style="{ width: strengthPct + '%', background: barColor }"></div>
+              </div>
+
+              <ul class="rule-list">
+                <li v-for="c in checks" :key="c.id" :class="c.ok ? 'ok' : ''">
+                  <svg v-if="c.ok" viewBox="0 0 24 24" width="15" height="15" fill="none"
+                       stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 12 10 18 20 6"/>
+                  </svg>
+                  <svg v-else viewBox="0 0 24 24" width="15" height="15" fill="none"
+                       stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="6" y1="12" x2="18" y2="12"/>
+                  </svg>
+                  <span>{{ c.label }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="section-title">MD5 Digest</div>
+            <div class="card">
+              <div v-if="digest" class="mono text-sm" style="color:var(--c-text-2)">{{ digest }}</div>
+              <div v-else class="hint">Digest appears once a password is entered.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TOOL — Credit Memo
+   ================================================================== */
+const ToolCreditPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const items = ref(storeGet('creditMemos', []));
+    const form = reactive({ name:'', amount:'', due:'' });
+
+    watch(items, v => storeSet('creditMemos', v), { deep:true });
+
+    const todayMs = () => {
+      const d = new Date();
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    };
+
+    const daysLeft = due => {
+      const parts = String(due).split('-').map(Number);
+      if (parts.length !== 3) return null;
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      return Math.round((d.getTime() - todayMs()) / 86400000);
+    };
+
+    const addItem = () => {
+      const amt = parseFloat(form.amount);
+      if (!form.name.trim() || !isFinite(amt) || amt <= 0 || !form.due){
+        showToast('Please complete all fields');
+        return;
+      }
+      items.value.push({
+        id: Date.now(),
+        name: form.name.trim(),
+        amount: amt,
+        due: form.due
+      });
+      form.name = ''; form.amount = ''; form.due = '';
+      showToast('Memo saved');
+
+      if ('Notification' in window && Notification.permission === 'granted'){
+        try {
+          new Notification('Credit Memo', { body: 'A new repayment reminder was recorded.' });
+        } catch(e){ /* silent */ }
+      }
+    };
+
+    const requestNotify = () => {
+      if ('Notification' in window && Notification.permission === 'default'){
+        Notification.requestPermission().catch(() => {});
+      }
+    };
+
+    const removeItem = id => {
+      items.value = items.value.filter(x => x.id !== id);
+    };
+
+    const sorted = computed(() =>
+      items.value.slice().sort((a, b) => a.due.localeCompare(b.due)));
+
+    const totalOutstanding = computed(() =>
+      sorted.value.reduce((s, x) => s + x.amount, 0));
+
+    return { items, form, addItem, removeItem, sorted, daysLeft, requestNotify, totalOutstanding, fmt };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="$router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Credit Memo</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Counterparty</label>
+                <input v-model="form.name" type="text" placeholder="Who owes this amount">
+              </div>
+              <div class="field">
+                <label>Amount</label>
+                <input v-model="form.amount" type="number" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="field">
+                <label>Agreed repayment date</label>
+                <input v-model="form.due" type="date">
+              </div>
+              <button class="btn btn--block" type="button" @click="addItem">Save memo</button>
+              <button class="btn btn--ghost btn--block mt-3" type="button" @click="requestNotify">
+                Enable in-app reminders
+              </button>
+            </div>
+
+            <div class="tool-result">
+              <div class="tool-result__row">
+                <span>Open memos</span><b>{{ sorted.length }}</b>
+              </div>
+              <div class="tool-result__row">
+                <span>Total outstanding</span><b>{{ fmt(totalOutstanding) }}</b>
+              </div>
+            </div>
+
+            <div class="section-title">Outstanding</div>
+            <div v-if="sorted.length === 0" class="empty">Nothing outstanding.</div>
+            <div v-else class="card" style="padding:0">
+              <div v-for="it in sorted" :key="it.id"
+                   style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--c-border)">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700">{{ it.name }}</div>
+                  <div class="hint">{{ fmt(it.amount) }} · Due {{ it.due }}</div>
+                  <div class="hint" v-if="daysLeft(it.due) !== null">
+                    <span v-if="daysLeft(it.due) < 0" class="up">Overdue by {{ -daysLeft(it.due) }} day(s)</span>
+                    <span v-else-if="daysLeft(it.due) === 0" class="up">Due today</span>
+                    <span v-else>{{ daysLeft(it.due) }} day(s) remaining</span>
+                  </div>
+                </div>
+                <button class="btn btn--ghost" style="min-height:36px;padding:6px 12px;font-size:13px"
+                        type="button" @click="removeItem(it.id)">Settle</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   SETTINGS PAGE
+   ================================================================== */
+const SettingsPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const mailto = 'mailto:com.asgpcalculatorconvertor.app@gmail.com';
+
+    const openMail = () => {
+      window.location.href = mailto;
+    };
+
+    return { router, mailto, openMail };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="section-title" style="margin-top:0">About</div>
+            <div class="setting-list">
+              <button class="setting-row" type="button" @click="router.push('/settings/version')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/>
+                    <line x1="12" y1="8" x2="12" y2="8.01"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Version</span>
+                <span class="setting-row__value">1.0.0</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="router.push('/settings/privacy')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Privacy Policy</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="router.push('/settings/terms')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 3h9l4 4v14H6z"/><line x1="9" y1="12" x2="16" y2="12"/>
+                    <line x1="9" y1="16" x2="14" y2="16"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Terms of Service</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="router.push('/settings/team')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/>
+                    <circle cx="17.5" cy="9" r="2.4"/><path d="M15 14.6c2.7.2 5 2.1 5 5.4"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">About Team</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
+
+            <div class="section-title">Engagement</div>
+            <div class="setting-list">
+              <button class="setting-row" type="button" @click="router.push('/settings/checkin')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="5" width="18" height="16" rx="2"/>
+                    <line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/>
+                    <polyline points="8 13 11 16 16 10"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Monthly Check-in</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="router.push('/settings/feedback')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 5h16v11H9l-5 4z"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Feedback</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="router.push('/settings/inbox')">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18v12H3z"/><polyline points="3 7 12 13 21 7"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Inbox</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+
+              <button class="setting-row" type="button" @click="openMail">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 5h16v14H4z"/><polyline points="4 6 12 13 20 6"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">Contact Us</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
+
+            <div class="hint mt-5" style="text-align:center">PSCI Pro · com.asgpcalculatorconvertor.app</div>
+          </div>
+        </div>
+      </div>
+      <TabBar />
+    </div>
+  `
+});
+
+/* ==================================================================
+   SETTINGS — simple content sub-pages
+   ================================================================== */
+const SettingsVersionPage = defineComponent({
+  setup(){ const router = useRouter(); return { router }; },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Version</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card" style="text-align:center">
+              <div style="width:64px;height:64px;border-radius:16px;background:var(--c-primary);
+                          color:#fff;display:flex;align-items:center;justify-content:center;
+                          font-weight:800;font-size:22px;margin:0 auto 12px">PS</div>
+              <div style="font-size:18px;font-weight:800">PSCI Pro</div>
+              <div class="hint">Version 1.0.0</div>
+            </div>
+            <div class="card">
+              <div class="tool-result__row"><span>Build</span><b>2024.10.1</b></div>
+              <div class="tool-result__row"><span>Identifier</span><b class="mono" style="font-size:12px">com.asgpcalculatorconvertor.app</b></div>
+              <div class="tool-result__row"><span>Platform</span><b>Android</b></div>
+            </div>
+            <div class="hint mt-4">
+              PSCI Pro is a market information and calculation workspace. All figures shown are
+              informational and do not constitute investment advice.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const SettingsPrivacyPage = defineComponent({
+  setup(){ const router = useRouter(); return { router }; },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Privacy Policy</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card prose">
+              <h3>Overview</h3>
+              <p>PSCI Pro respects your privacy. This application is designed to operate primarily on
+              your device, and the information you enter into its tools stays in local storage on
+              that device unless you explicitly send it to us.</p>
+
+              <h3>Information we process</h3>
+              <p>When the application starts, it may perform a single check against our service to
+              determine whether a privacy notice applies to your region. That check transmits an
+              application identifier and a non-reversible device fingerprint derived from local
+              rendering characteristics. The fingerprint cannot be used to identify you personally.</p>
+
+              <h3>Data stored on your device</h3>
+              <p>Calculator inputs, calendar entries, credit memos, check-in records and inbox
+              messages are stored locally on your device. They are not uploaded automatically and
+              remain under your control. Clearing application data removes them permanently.</p>
+
+              <h3>Third parties</h3>
+              <p>We do not sell, rent or trade personal information. We do not embed third-party
+              advertising or behavioural tracking SDKs in this application.</p>
+
+              <h3>Your choices</h3>
+              <p>You may clear locally stored data at any time through your device settings. If you
+              have questions about this policy, contact us at
+              com.asgpcalculatorconvertor.app@gmail.com.</p>
+
+              <h3>Updates</h3>
+              <p>This policy may be revised as the application evolves. Material changes will be
+              reflected in the application's version notes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const SettingsTermsPage = defineComponent({
+  setup(){ const router = useRouter(); return { router }; },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Terms of Service</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card prose">
+              <h3>Acceptance</h3>
+              <p>By using PSCI Pro you agree to these terms. If you do not agree, please discontinue
+              use of the application.</p>
+
+              <h3>Nature of the service</h3>
+              <p>PSCI Pro provides market reference data and offline financial calculators. All
+              content is provided for general information only. It is not investment, legal, tax or
+              accounting advice, and it is not a recommendation to buy or sell any security.</p>
+
+              <h3>Accuracy</h3>
+              <p>Market values displayed in the application are reference values and may differ from
+              live exchange data. Calculations are performed locally and depend entirely on the
+              figures you supply. You are responsible for verifying any result before relying on it.</p>
+
+              <h3>Acceptable use</h3>
+              <ul>
+                <li>Do not use the application for unlawful purposes.</li>
+                <li>Do not attempt to reverse engineer or redistribute the application without permission.</li>
+                <li>Do not rely on the application as the sole basis for financial decisions.</li>
+              </ul>
+
+              <h3>Limitation of liability</h3>
+              <p>To the maximum extent permitted by law, PSCI Pro and its contributors are not liable
+              for any loss arising from the use of, or inability to use, this application.</p>
+
+              <h3>Contact</h3>
+              <p>Questions regarding these terms may be sent to
+              com.asgpcalculatorconvertor.app@gmail.com.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+const SettingsTeamPage = defineComponent({
+  setup(){ const router = useRouter(); return { router }; },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">About Team</div>
+        </div>
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card prose">
+              <h3>Who we are</h3>
+              <p>PSCI Pro is built by a small independent team of engineers and market practitioners.
+              We focus on fast, private, offline-friendly tools for people who follow markets closely.</p>
+
+              <h3>How we work</h3>
+              <p>Our design principle is simple: do the calculation on the device, keep the interface
+              quiet, and never make the user wait on something they did not ask for.</p>
+
+              <h3>What we build</h3>
+              <ul>
+                <li>Market snapshot and ranking views for major US equities.</li>
+                <li>Offline calculators for position, loan and profitability analysis.</li>
+                <li>Lightweight record keeping for personal financial planning.</li>
+              </ul>
+
+              <h3>Get in touch</h3>
+              <p>Reach the team at com.asgpcalculatorconvertor.app@gmail.com.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   SETTINGS — Monthly Check-in
+   ================================================================== */
+const SettingsCheckinPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+    const DOW = ['S','M','T','W','T','F','S'];
+
+    const keyOf = d => year + '-' + String(month + 1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+
+    const records = ref(storeGet('checkins_' + year + '_' + (month + 1), []));
+    watch(records, v => storeSet('checkins_' + year + '_' + (month + 1), v));
+
+    const todayKey = keyOf(today.getDate());
+    const checkedToday = computed(() => records.value.includes(todayKey));
+
+    const cells = computed(() => {
+      const first = new Date(year, month, 1);
+      const startDow = first.getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevDays = new Date(year, month, 0).getDate();
+      const out = [];
+      for (let i = 0; i < startDow; i++) out.push({ day: prevDays - startDow + 1 + i, muted:true, key:'p'+i });
+      for (let d = 1; d <= daysInMonth; d++) out.push({ day:d, muted:false, key:'c'+d });
+      while (out.length % 7 !== 0) out.push({ day:0, muted:true, key:'n'+out.length });
+      return out;
+    });
+
+    const doCheckin = () => {
+      if (checkedToday.value){ showToast('Already checked in today'); return; }
+      records.value = records.value.concat([todayKey]);
+      showToast('Check-in successful');
+    };
+
+    return {
+      MONTHS, DOW, year, month, cells, records, checkedToday, doCheckin, keyOf, router,
+      monthLabel: MONTHS[month] + ' ' + year
+    };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Monthly Check-in</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="checkin-summary">
+              <div class="checkin-summary__item">
+                <b>{{ records.length }}</b><span>Days this month</span>
+              </div>
+              <div class="checkin-summary__item">
+                <b>{{ checkedToday ? 'Yes' : 'No' }}</b><span>Checked in today</span>
+              </div>
+            </div>
+
+            <div class="cal">
+              <div class="cal__head" style="justify-content:center">
+                <div class="cal__month">{{ monthLabel }}</div>
+              </div>
+              <div class="cal__grid">
+                <div v-for="(d,i) in DOW" :key="'dow'+i" class="cal__dow">{{ d }}</div>
+                <div v-for="c in cells" :key="c.key"
+                     class="cal__cell"
+                     :class="[c.muted ? 'cal__cell--muted' : '',
+                              (!c.muted && records.includes(keyOf(c.day))) ? 'cal__cell--selected' : '']">
+                  <span>{{ c.day || '' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn--block mt-4" type="button"
+                    :disabled="checkedToday" @click="doCheckin">
+              {{ checkedToday ? 'Checked in today' : 'Check in now' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   SETTINGS — Feedback
+   ================================================================== */
+const SettingsFeedbackPage = defineComponent({
+  setup(){
+    const router = useRouter();
+    const title = ref('');
+    const body = ref('');
+
+    const canSend = computed(() => title.value.trim().length > 0 && body.value.trim().length > 0);
+
+    const send = () => {
+      if (!canSend.value) return;
+      showToast('Feedback sent successfully');
+      title.value = '';
+      body.value = '';
+      setTimeout(() => { router.back(); }, 400);
+    };
+
+    return { title, body, canSend, send, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Feedback</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="card">
+              <div class="field">
+                <label>Title</label>
+                <input v-model="title" type="text" placeholder="Summarize your feedback">
+              </div>
+              <div class="field" style="margin-bottom:0">
+                <label>Message</label>
+                <textarea v-model="body" placeholder="Tell us what you think"></textarea>
+              </div>
+            </div>
+
+            <button class="btn btn--block mt-3" type="button" :disabled="!canSend" @click="send">
+              Send feedback
+            </button>
+            <div class="hint mt-3">Both fields are required before sending.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   SETTINGS — Inbox
+   ================================================================== */
+const SettingsInboxPage = defineComponent({
+  setup(){
+    const router = useRouter();
+
+    const messages = ref(storeGet('inbox', [
+      {
+        id: 1,
+        title: 'Welcome',
+        body: 'Welcome to PSCI Pro.\n\nThis workspace brings market snapshots, ranking views and a set of offline financial tools into one place. Use the Toolbox tab for calculations that never leave your device, and the Settings tab to review policies, check in, or send us feedback.\n\nThank you for using PSCI Pro.'
+      }
+    ]));
+
+    const active = ref(null);
+    const open = m => { active.value = m; };
+    const close = () => { active.value = null; };
+
+    return { messages, active, open, close, router };
+  },
+  template: `
+    <div class="app-shell">
+      <div class="page">
+        <div class="topbar">
+          <button class="topbar__back" type="button" @click="router.back()">
+            <span v-html="'${BackIcon}'"></span>
+          </button>
+          <div class="topbar__title">Inbox</div>
+        </div>
+
+        <div class="page-scroll">
+          <div class="page-body">
+            <div class="setting-list">
+              <button v-for="m in messages" :key="m.id" class="setting-row" type="button" @click="open(m)">
+                <span class="setting-row__ico">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18v12H3z"/><polyline points="3 7 12 13 21 7"/>
+                  </svg>
+                </span>
+                <span class="setting-row__label">{{ m.title }}</span>
+                <span class="setting-row__chev">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 5 16 12 9 19"/>
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <transition name="fade">
+          <div v-if="active" class="modal-mask" @click.self="close">
+            <div class="modal">
+              <h3>{{ active.title }}</h3>
+              <p>{{ active.body }}</p>
+              <div class="modal__actions">
+                <button class="btn" type="button" @click="close">Close</button>
+              </div>
+            </div>
+          </div>
+        </transition>
+      </div>
+    </div>
+  `
+});
+
+/* ==================================================================
+   TAB BAR
+   ================================================================== */
+const TabBar = defineComponent({
+  setup(){
+    const route = useRoute();
+    const isActive = name => route.name === name;
+    return { isActive };
+  },
+  template: `
+    <nav class="tabbar">
+      <router-link to="/home" custom v-slot="{ navigate }">
+        <a class="tabbar__item" :class="isActive('home') ? 'is-active' : ''"
+           href="#/home" @click.prevent="navigate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>
+          </svg>
+          <span>Home</span>
+        </a>
+      </router-link>
+
+      <router-link to="/toolbox" custom v-slot="{ navigate }">
+        <a class="tabbar__item" :class="isActive('toolbox') ? 'is-active' : ''"
+           href="#/toolbox" @click.prevent="navigate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="7" width="18" height="13" rx="2"/>
+            <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+          </svg>
+          <span>Toolbox</span>
+        </a>
+      </router-link>
+
+      <router-link to="/settings" custom v-slot="{ navigate }">
+        <a class="tabbar__item" :class="isActive('settings') ? 'is-active' : ''"
+           href="#/settings" @click.prevent="navigate">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3.2"/>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.56 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </router-link>
+    </nav>
+  `
+});
+
+/* ==================================================================
+   ROUTER
+   ================================================================== */
+const routes = [
+  { path:'/', redirect:'/loading' },
+  { path:'/loading', name:'loading', component: LoadingPage },
+
+  { path:'/home', name:'home', component: HomePage },
+  { path:'/stock/:symbol', name:'stock', component: StockDetailPage },
+
+  { path:'/rank/:kind', name:'rank', component: RankPage },
+  { path:'/guide', name:'guide', component: GuidePage },
+
+  { path:'/toolbox', name:'toolbox', component: ToolboxPage },
+  { path:'/tool/dca', name:'tool-dca', component: ToolDcaPage },
+  { path:'/tool/calendar', name:'tool-calendar', component: ToolWealthCalendarPage },
+  { path:'/tool/loan', name:'tool-loan', component: ToolLoanPage },
+  { path:'/tool/profit', name:'tool-profit', component: ToolProfitPage },
+  { path:'/tool/reverse', name:'tool-reverse', component: ToolReversePage },
+  { path:'/tool/password', name:'tool-password', component: ToolPasswordPage },
+  { path:'/tool/credit', name:'tool-credit', component: ToolCreditPage },
+
+  { path:'/settings', name:'settings', component: SettingsPage },
+  { path:'/settings/version', name:'settings-version', component: SettingsVersionPage },
+  { path:'/settings/privacy', name:'settings-privacy', component: SettingsPrivacyPage },
+  { path:'/settings/terms', name:'settings-terms', component: SettingsTermsPage },
+  { path:'/settings/team', name:'settings-team', component: SettingsTeamPage },
+  { path:'/settings/checkin', name:'settings-checkin', component: SettingsCheckinPage },
+  { path:'/settings/feedback', name:'settings-feedback', component: SettingsFeedbackPage },
+  { path:'/settings/inbox', name:'settings-inbox', component: SettingsInboxPage },
+
+  { path:'/:pathMatch(.*)*', redirect:'/home' }
+];
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes,
+  scrollBehavior(){ return { top:0 }; }
+});
+
+/* ==================================================================
+   APP
+   ================================================================== */
+const App = defineComponent({
+  setup(){
+    return {};
+  },
+  template: `
+    <router-view v-slot="{ Component }">
+      <transition name="fade" mode="out-in">
+        <component :is="Component" />
+      </transition>
+    </router-view>
+    <Toast />
+  `
+});
+
+const app = createApp(App);
+app.use(router);
+app.component('TabBar', TabBar);
+app.component('Toast', Toast);
+app.mount('#app');
+</script>
+</body>
+</html>
